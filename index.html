@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Mapping Project</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        :root {
+            --primary-color: #3B82F6;
+            --text-color: #1f2937;
+            --bg-color: #f3f4f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+        }
+
+        header {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 6rem auto 2rem;
+            padding: 0 1rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: #4b5563;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .map-container {
+            margin: 2rem 0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem 0;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .controls h3 {
+            margin-bottom: 1rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .button:hover {
+            background-color: #2563eb;
+        }
+
+        footer {
+            background-color: white;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            #map {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>Web Map Project</h1>
+            <div class="nav-links">
+                <a href="#map">Map</a>
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Interactive Web Mapping Application</h1>
+            <p>Explore this interactive web map built with Leaflet.js, featuring custom layers, markers, and geospatial analysis tools.</p>
+        </section>
+
+        <div class="controls">
+            <h3>Map Controls</h3>
+            <div class="button-group">
+                <button class="button" onclick="toggleLayer('markers')">Toggle Markers</button>
+                <button class="button" onclick="toggleLayer('heatmap')">Toggle Heatmap</button>
+                <button class="button" onclick="resetView()">Reset View</button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <section id="features" class="features">
+            <div class="feature-card">
+                <h3>Custom Markers</h3>
+                <p>Interactive markers with custom icons and popups, displaying location-specific information and media content.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Layer Controls</h3>
+                <p>Multiple map layers including satellite imagery, terrain data, and custom overlay layers with easy switching.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Geospatial Analysis</h3>
+                <p>Built-in tools for distance measurement, area calculation, and spatial queries using Turf.js integration.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Web Map Project. Built with Leaflet.js</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([51.505, -0.09], 13);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Sample markers
+        const markers = L.layerGroup([
+            L.marker([51.5, -0.09]).bindPopup('Location A'),
+            L.marker([51.51, -0.1]).bindPopup('Location B'),
+            L.marker([51.49, -0.08]).bindPopup('Location C')
+        ]).addTo(map);
+
+        // Map control functions
+        function toggleLayer(layerName) {
+            if (layerName === 'markers') {
+                if (map.hasLayer(markers)) {
+                    map.removeLayer(markers);
+                } else {
+                    map.addLayer(markers);
+                }
+            }
+            // Add more layer toggle functionality here
+        }
+
+        function resetView() {
+            map.setView([51.505, -0.09], 13);
+        }
+    </script>
+</body>
+</html>
