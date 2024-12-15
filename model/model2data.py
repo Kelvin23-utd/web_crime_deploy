@@ -87,6 +87,8 @@ class DallasCrimePredictor(nn.Module):
             'counts': counts,
             'aux_outputs': aux_outputs
         }
+        
+        
 
 def generate_features(num_samples):
     """Generate random feature vectors for prediction"""
