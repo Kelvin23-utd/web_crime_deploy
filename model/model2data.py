@@ -111,7 +111,7 @@ def generate_predictions(days=7):
     try:
         # Load the model
         model = DallasCrimePredictor()
-        checkpoint = torch.load('dallas_crime_model.pt')
+        checkpoint = torch.load('model/dallas_crime_model.pt')
         model.load_state_dict(checkpoint['model_state_dict'])
         bounds = checkpoint['metadata']['dallas_bounds']
         model.eval()
