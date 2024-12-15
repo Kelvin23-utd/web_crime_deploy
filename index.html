@@ -3,165 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Mapping Project</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <title>Dallas Crime Predictions Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" />
     <style>
-        :root {
-            --primary-color: #3B82F6;
-            --text-color: #1f2937;
-            --bg-color: #f3f4f6;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: var(--bg-color);
-        }
-
-        header {
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1rem;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-        }
-
-        nav {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--text-color);
-            font-weight: 500;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary-color);
-        }
-
-        main {
-            max-width: 1200px;
-            margin: 6rem auto 2rem;
-            padding: 0 1rem;
-        }
-
-        .map-container {
-            margin: 2rem 0;
-            border-radius: 0.5rem;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
         #map {
-            height: 500px;
+            height: 600px;
             width: 100%;
         }
-
-        .data-list {
-            margin: 2rem 0;
+        .legend {
+            padding: 6px 8px;
             background: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            line-height: 24px;
         }
-
-        footer {
-            background-color: white;
-            padding: 2rem;
-            text-align: center;
-            margin-top: 4rem;
-        }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                gap: 1rem;
-            }
-
-            #map {
-                height: 400px;
-            }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
         }
     </style>
 </head>
-<body>
-    <header>
-        <nav>
-            <h1>Dallas Crime Data Map</h1>
-            <div class="nav-links">
-                <a href="#map">Map</a>
-                <a href="#about">About</a>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Dallas Crime Predictions Dashboard</h1>
+        
+        <!-- Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="font-semibold mb-2">Date Filter</h2>
+                <select id="dateSelect" class="w-full p-2 border rounded">
+                    <option value="all">All Dates</option>
+                </select>
             </div>
-        </nav>
-    </header>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="font-semibold mb-2">Total Predictions</h2>
+                <div id="totalPredictions" class="text-2xl font-bold text-blue-600">-</div>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="font-semibold mb-2">Total Predicted Crimes</h2>
+                <div id="totalCrimes" class="text-2xl font-bold text-red-600">-</div>
+            </div>
+        </div>
 
-    <main>
-        <div class="map-container">
+        <!-- Statistics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="font-semibold mb-4">Crime Hotspots</h2>
+                <div id="hotspotsList" class="space-y-2"></div>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h2 class="font-semibold mb-4">Daily Statistics</h2>
+                <div id="dailyStats" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="bg-white p-4 rounded shadow">
             <div id="map"></div>
         </div>
-        <div class="data-list">
-            <h2>First Location</h2>
-            <div id="location-info"></div>
-        </div>
-    </main>
+    </div>
 
-    <footer>
-        <p>&copy; 2024 Dallas Crime Data Map. Built with Leaflet.js</p>
-    </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     <script>
+        let map;
+        let markers = [];
+        let predictions = [];
+        let currentDate = 'all';
+        let heatLayer;
+
         // Initialize map
-        const map = L.map('map');
-        
-        // Add OpenStreetMap tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        function initMap() {
+            map = L.map('map').setView([32.7767, -96.7970], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
 
-        // Sample data (your coordinates)
-        const data = [[32.764244079589844, -96.71856689453125], [32.766090393066406, -96.70670318603516]];
-        
-        // Get first location
-        const firstLocation = data[0];
-        const [lat, lng] = firstLocation;
-        
-        // Set view to first location
-        map.setView([lat, lng], 13);
-        
-        // Add marker for first location
-        const marker = L.marker([lat, lng])
-            .bindPopup(`First Location<br>Latitude: ${lat}<br>Longitude: ${lng}`)
-            .addTo(map);
-        
-        // Display location info
-        const locationInfo = document.getElementById('location-info');
-        locationInfo.innerHTML = `
-            <p><strong>Latitude:</strong> ${lat}</p>
-            <p><strong>Longitude:</strong> ${lng}</p>
-        `;
+            // Add legend
+            addLegend();
+        }
 
-        // Open popup for first location
-        marker.openPopup();
+        function addLegend() {
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML += '<h4>Predicted Crimes</h4>';
+                div.innerHTML += '<i style="background: #ff4444"></i> High (5+)<br>';
+                div.innerHTML += '<i style="background: #ff8844"></i> Medium (3-4)<br>';
+                div.innerHTML += '<i style="background: #ffbb44"></i> Low (1-2)<br>';
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        
+        async function loadPredictions() {
+            try {
+                console.log('Attempting to load predictions...');
+                const response = await fetch('./output/crime_predictions.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                console.log('Response received:', response);
+                
+                const data = await response.json();
+                console.log('Data loaded:', data);
+                
+                if (!data.predictions || !Array.isArray(data.predictions)) {
+                    throw new Error('Invalid data format: predictions array not found');
+                }
+                
+                predictions = data.predictions;
+                console.log(`Loaded ${predictions.length} predictions`);
+                
+                // Update date selector
+                const dates = [...new Set(predictions.map(p => p.date))].sort();
+                console.log('Available dates:', dates);
+                
+                const dateSelect = document.getElementById('dateSelect');
+                dates.forEach(date => {
+                    const option = document.createElement('option');
+                    option.value = date;
+                    option.textContent = new Date(date).toLocaleDateString();
+                    dateSelect.appendChild(option);
+                });
+
+                // Initial display
+                displayPredictions();
+            } catch (error) {
+                console.error('Error loading predictions:', error);
+                document.getElementById('totalPredictions').textContent = 'Error loading data';
+                document.getElementById('totalCrimes').textContent = 'Error loading data';
+            }
+        }
+
+        // Get marker color based on crime count
+        function getMarkerColor(count) {
+            if (count >= 5) return '#ff4444';
+            if (count >= 3) return '#ff8844';
+            return '#ffbb44';
+        }
+
+        // Display predictions on map
+        function displayPredictions() {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Filter predictions by date
+            const filteredPredictions = currentDate === 'all' 
+                ? predictions 
+                : predictions.filter(p => p.date === currentDate);
+
+            // Update statistics
+            updateStatistics(filteredPredictions);
+
+            // Add new markers
+            filteredPredictions.forEach(pred => {
+                const size = Math.min(pred.predicted_crimes * 3, 15);
+                const color = getMarkerColor(pred.predicted_crimes);
+                
+                const marker = L.circleMarker(
+                    [pred.latitude, pred.longitude],
+                    {
+                        radius: size,
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.7,
+                        weight: 1
+                    }
+                );
+
+                marker.bindPopup(`
+                    <div class="text-sm">
+                        <div class="font-bold mb-1">Crime Prediction</div>
+                        <div>Date: ${new Date(pred.date).toLocaleDateString()}</div>
+                        <div>Predicted Crimes: ${pred.predicted_crimes}</div>
+                        <div>Location: ${pred.latitude.toFixed(4)}, ${pred.longitude.toFixed(4)}</div>
+                    </div>
+                `);
+
+                marker.addTo(map);
+                markers.push(marker);
+            });
+        }
+
+        // Update statistics display
+        function updateStatistics(filteredPredictions) {
+            // Update total predictions
+            document.getElementById('totalPredictions').textContent = 
+                filteredPredictions.length;
+
+            // Update total crimes
+            const totalCrimes = filteredPredictions.reduce((sum, p) => sum + p.predicted_crimes, 0);
+            document.getElementById('totalCrimes').textContent = totalCrimes;
+
+            // Update hotspots
+            const hotspots = findHotspots(filteredPredictions);
+            const hotspotsHtml = hotspots.map((spot, index) => `
+                <div class="border-l-4 border-red-500 pl-2">
+                    <div class="font-bold">Hotspot ${index + 1}</div>
+                    <div>Predicted Crimes: ${spot.total_crimes}</div>
+                    <div class="text-sm text-gray-600">
+                        ${spot.latitude.toFixed(4)}, ${spot.longitude.toFixed(4)}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('hotspotsList').innerHTML = hotspotsHtml;
+
+            // Update daily stats
+            if (currentDate === 'all') {
+                const dailyStats = calculateDailyStats(filteredPredictions);
+                const statsHtml = Object.entries(dailyStats)
+                    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+                    .map(([date, stats]) => `
+                        <div class="border-l-4 border-blue-500 pl-2">
+                            <div class="font-bold">${new Date(date).toLocaleDateString()}</div>
+                            <div>Total Predictions: ${stats.count}</div>
+                            <div>Total Crimes: ${stats.total_crimes}</div>
+                            <div>Average per Location: ${stats.average.toFixed(2)}</div>
+                        </div>
+                    `).join('');
+                document.getElementById('dailyStats').innerHTML = statsHtml;
+            } else {
+                document.getElementById('dailyStats').innerHTML = `
+                    <div class="text-gray-600">
+                        Select "All Dates" to view daily statistics
+                    </div>
+                `;
+            }
+        }
+
+        // Find crime hotspots
+        function findHotspots(predictions) {
+            return predictions
+                .sort((a, b) => b.predicted_crimes - a.predicted_crimes)
+                .slice(0, 5);
+        }
+
+        // Calculate daily statistics
+        function calculateDailyStats(predictions) {
+            const stats = {};
+            predictions.forEach(pred => {
+                if (!stats[pred.date]) {
+                    stats[pred.date] = {
+                        count: 0,
+                        total_crimes: 0,
+                        average: 0
+                    };
+                }
+                stats[pred.date].count++;
+                stats[pred.date].total_crimes += pred.predicted_crimes;
+                stats[pred.date].average = stats[pred.date].total_crimes / stats[pred.date].count;
+            });
+            return stats;
+        }
+
+        // Initialize
+        initMap();
+        loadPredictions();
+
+        // Event listener for date selection
+        document.getElementById('dateSelect').addEventListener('change', (e) => {
+            currentDate = e.target.value;
+            displayPredictions();
+        });
     </script>
 </body>
 </html>

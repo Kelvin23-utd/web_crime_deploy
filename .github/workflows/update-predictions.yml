@@ -31,7 +31,7 @@ jobs:
         
     - name: Run prediction model
       run: |
-        python generate_predictions.py
+        python model/model2data.py
         
     - name: Configure Git
       run: |
