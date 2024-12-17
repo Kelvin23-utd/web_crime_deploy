@@ -26,6 +26,12 @@
             margin-right: 8px;
             opacity: 0.7;
         }
+        .grid-cell {
+            transition: all 0.3s ease;
+        }
+        .grid-cell:hover {
+            filter: brightness(0.8);
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -195,26 +201,23 @@
                     [cell.lat + CELL_SIZE_DEG, cell.lon + CELL_SIZE_DEG]
                 ];
                 
-                let color, fillColor, weight, fillOpacity;
+                let fillColor, fillOpacity;
                 
                 if (cell.count > 0) {
                     const intensity = Math.min(cell.count / 10, 1);
-                    color = getHeatmapColor(intensity);
-                    fillColor = color;
-                    weight = 2;
+                    fillColor = getHeatmapColor(intensity);
                     fillOpacity = 0.6;
                 } else {
-                    color = '#666666';
                     fillColor = '#e5f5e0';  // Light green for no crime
-                    weight = 1;
                     fillOpacity = 0.3;
                 }
                 
                 L.rectangle(bounds, {
-                    color: color,
-                    weight: weight,
+                    color: 'transparent',
+                    weight: 0,
                     fillColor: fillColor,
-                    fillOpacity: fillOpacity
+                    fillOpacity: fillOpacity,
+                    className: 'grid-cell'
                 }).addTo(map)
                 .bindPopup(`Predicted Crimes: ${cell.count}`);
             });
