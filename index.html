@@ -3,64 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dallas Crime Heatmap Comparison</title>
-    
+    <title>Dallas Crime Heatmap</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
-    
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-        }
-        .maps-container {
-            display: flex;
-            gap: 20px;
-            height: 600px;
-        }
-        .map-wrapper {
-            flex: 1;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            overflow: hidden;
-            position: relative;
-        }
-        .map {
-            height: 100%;
-        }
-        .legend {
-            padding: 6px 8px;
-            background: white;
-            background: rgba(255,255,255,0.8);
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            border-radius: 5px;
-            line-height: 24px;
-        }
-        .legend i {
-            width: 18px;
-            height: 18px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.7;
-        }
-        .grid-cell {
-            transition: all 0.3s ease;
-        }
-        .grid-cell:hover {
-            filter: brightness(0.8);
-        }
-        .map-label {
-            position: absolute;
-            top: 10px;
-            left: 50px;
-            z-index: 1000;
-            background: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div class="maps-container">
@@ -74,231 +19,24 @@
         </div>
     </div>
 
+    <!-- Third-party Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     
-    <script>
-        // Dallas polygon coordinates
-        const DALLAS_POLYGON = [
-            [32.869839, -96.936899],
-            [32.977145, -96.837507],
-            [32.906461, -96.733480],
-            [32.910587, -96.642199],
-            [32.859866, -96.587225],
-            [32.712301, -96.610572],
-            [32.640769, -96.662670],
-            [32.640769, -96.836477],
-            [32.774660, -96.991724],
-            [32.869839, -96.936899]
-        ];
-
-        const CELL_SIZE_DEG = 0.014492;
-
-        // Initialize maps
-        const map1 = L.map('map1').setView([32.7767, -96.7970], 11);
-        const map2 = L.map('map2').setView([32.7767, -96.7970], 11);
-
-        // Synchronize maps
-        function syncMaps(sourceMap, targetMap) {
-            sourceMap.on('move', function() {
-                targetMap.setView(sourceMap.getCenter(), sourceMap.getZoom(), {
-                    animate: false
-                });
-            });
-            
-            sourceMap.on('zoom', function() {
-                targetMap.setZoom(sourceMap.getZoom(), {
-                    animate: false
-                });
-            });
-        }
-
-        // Sync both maps in both directions
-        syncMaps(map1, map2);
-        syncMaps(map2, map1);
-
-        // Add tile layers
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map1);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map2);
-
-        // Calculate bounds from polygon
-        const bounds = DALLAS_POLYGON.reduce((acc, point) => ({
-            north: Math.max(acc.north, point[0]),
-            south: Math.min(acc.south, point[0]),
-            east: Math.max(acc.east, point[1]),
-            west: Math.min(acc.west, point[1])
-        }), {north: -90, south: 90, east: -180, west: 180});
-
-        function createGrid(data) {
-            const grid = {};
-            
-            for (let lat = bounds.south; lat < bounds.north; lat += CELL_SIZE_DEG) {
-                for (let lon = bounds.west; lon < bounds.east; lon += CELL_SIZE_DEG) {
-                    const key = `${lat.toFixed(6)},${lon.toFixed(6)}`;
-                    grid[key] = {
-                        lat: lat,
-                        lon: lon,
-                        count: 0
-                    };
-                }
-            }
-
-            // Both formats now have a predictions array
-            const predictions = data.predictions || [];
-            predictions.forEach(pred => {
-                // Handle both array format and object format predictions
-                let lat, lon, crimeCount;
-                
-                if (Array.isArray(pred)) {
-                    // If prediction is an array [lat, lon]
-                    [lat, lon] = pred;
-                    crimeCount = 1;
-                } else {
-                    // If prediction is an object {latitude, longitude, predicted_crimes}
-                    lat = pred.latitude;
-                    lon = pred.longitude;
-                    crimeCount = pred.predicted_crimes || 1;
-                }
-
-                const latIndex = Math.floor((lat - bounds.south) / CELL_SIZE_DEG);
-                const lonIndex = Math.floor((lon - bounds.west) / CELL_SIZE_DEG);
-                const cellLat = bounds.south + (latIndex * CELL_SIZE_DEG);
-                const cellLon = bounds.west + (lonIndex * CELL_SIZE_DEG);
-                const key = `${cellLat.toFixed(6)},${cellLon.toFixed(6)}`;
-                
-                if (grid[key]) {
-                    grid[key].count += crimeCount;
-                }
-            });
-
-            return grid;
-        }
-
-        function getHeatmapColor(count) {
-            if (count === 0) return '#e5f5e0';
-            if (count >= 8) return '#ff0000';
-            if (count >= 4) return '#ff8800';
-            return '#ffff00';
-        }
-
-        function addGridToMap(grid, map) {
-            const gridLayer = L.featureGroup();
-            
-            Object.values(grid).forEach(cell => {
-                const bounds = [
-                    [cell.lat, cell.lon],
-                    [cell.lat + CELL_SIZE_DEG, cell.lon + CELL_SIZE_DEG]
-                ];
-                
-                const rectangle = L.rectangle(bounds, {
-                    color: 'transparent',
-                    weight: 0,
-                    fillColor: getHeatmapColor(cell.count),
-                    fillOpacity: cell.count > 0 ? 0.6 : 0.3,
-                    className: 'grid-cell'
-                });
-
-                rectangle.bindPopup(`${map === map1 ? 'Actual' : 'Predicted'} Crimes: ${cell.count}`);
-                
-                // Sync popup states between maps
-                rectangle.on('popupopen', () => {
-                    const key = `${cell.lat},${cell.lon}`;
-                    if (map === map1 && map2._gridCells[key]) {
-                        map2._gridCells[key].openPopup();
-                    } else if (map === map2 && map1._gridCells[key]) {
-                        map1._gridCells[key].openPopup();
-                    }
-                });
-
-                rectangle.on('popupclose', () => {
-                    const key = `${cell.lat},${cell.lon}`;
-                    if (map === map1 && map2._gridCells[key]) {
-                        map2._gridCells[key].closePopup();
-                    } else if (map === map2 && map1._gridCells[key]) {
-                        map1._gridCells[key].closePopup();
-                    }
-                });
-
-                gridLayer.addLayer(rectangle);
-                
-                // Store reference to rectangle
-                if (!map._gridCells) map._gridCells = {};
-                map._gridCells[`${cell.lat},${cell.lon}`] = rectangle;
-            });
-            
-            gridLayer.addTo(map);
-            return gridLayer;
-        }
-
-        function addLegend(map, title) {
-            const legend = L.control({position: 'bottomright'});
-            legend.onAdd = function (map) {
-                const div = L.DomUtil.create('div', 'legend');
-                div.innerHTML = `<h4>${title}</h4>` +
-                    '<i style="background: #ff0000"></i> High (8+)<br>' +
-                    '<i style="background: #ff8800"></i> Medium (4-7)<br>' +
-                    '<i style="background: #ffff00"></i> Low (1-3)<br>' +
-                    '<i style="background: #e5f5e0"></i> No Crime Data<br>' +
-                    '<div style="margin-top: 10px;">' +
-                    '<i style="background: none; border: 2px dashed #2563eb"></i>Dallas City Boundary</div>';
-                return div;
-            };
-            legend.addTo(map);
-        }
-
-        function addDallasBoundary(map) {
-            return L.polygon(DALLAS_POLYGON, {
-                color: '#2563eb',
-                weight: 3,
-                fill: false,
-                dashArray: '5, 10'
-            }).addTo(map);
-        }
-
-        // Load and display data
-        Promise.all([
-            fetch('./real.json'),
-            fetch('./output/crime_predictions.json')
-        ]).then(async ([realResponse, predictedResponse]) => {
-            const realData = await realResponse.json();
-            const predictedData = await predictedResponse.json();
-            
-            // Debug logging
-            console.log("Real data format:", realData);
-            console.log("Predicted data format:", predictedData);
-            
-            // Create grids for both datasets
-            const realGrid = createGrid(realData);
-            const predictedGrid = createGrid(predictedData);
-            
-            // Add grids
-            const gridLayer1 = addGridToMap(realGrid, map1);
-            const gridLayer2 = addGridToMap(predictedGrid, map2);
-
-            // Add Dallas boundaries
-            const boundary1 = addDallasBoundary(map1);
-            const boundary2 = addDallasBoundary(map2);
-
-            // Add legends
-            addLegend(map1, 'Actual Crime Density');
-            addLegend(map2, 'Predicted Crime Density');
-
-            // Fit to Dallas boundary
-            const polyBounds = L.latLngBounds(DALLAS_POLYGON);
-            map1.fitBounds(polyBounds);
-
-            // Ensure boundaries stay on top
-            boundary1.bringToFront();
-            boundary2.bringToFront();
-        })
-        .catch(error => {
-            console.error('Error loading data:', error);
-            alert('Error loading data. Check console for details.');
-        });
-    </script>
+    <!-- Application Configuration -->
+    <script src="js/config.js"></script>
+    
+    <!-- Core Utilities -->
+    <script src="js/utils.js"></script>
+    
+    <!-- Components -->
+    <script src="js/components/Grid.js"></script>
+    <script src="js/components/Legend.js"></script>
+    <script src="js/components/Boundary.js"></script>
+    
+    <!-- Map Management -->
+    <script src="js/MapManager.js"></script>
+    
+    <!-- Main Application -->
+    <script src="js/app.js"></script>
 </body>
 </html>
