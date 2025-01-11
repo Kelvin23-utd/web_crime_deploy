@@ -6,28 +6,27 @@
     <title>Today's Crime Data Without Benchmark</title>
     
     <!-- Navigation styles -->
-   <!-- Navigation styles -->
-   <style>
-    .nav-links {
-        padding: 15px;
-        background: #f0f0f0;
-        margin-bottom: 20px;
-        border-radius: 4px;
-    }
-    .nav-links a {
-        color: #2563eb;
-        text-decoration: none;
-        padding: 5px 10px;
-    }
-    .nav-links a:hover {
-        text-decoration: underline;
-    }
-    .nav-links a.active {
-        background: #2563eb;
-        color: white;
-        border-radius: 4px;
-    }
-</style>
+    <style>
+        .nav-links {
+            padding: 15px;
+            background: #f0f0f0;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .nav-links a {
+            color: #2563eb;
+            text-decoration: none;
+            padding: 5px 10px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .nav-links a.active {
+            background: #2563eb;
+            color: white;
+            border-radius: 4px;
+        }
+    </style>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
     
@@ -83,18 +82,12 @@
         }
     </style>
 </head>
-<div class="nav-links">
-    <a href="index.html">Crime Comparison Maps</a>
-    <a href="todays_predictions.html" class="active">Today's Predictions</a>
-</div>
-
-<div class="map-wrapper">
-    <div class="map-label">Today's Crime Prediction</div>
-    <div id="map" class="map"></div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
 <body>
+    <div class="nav-links">
+        <a href="index.html">Crime Comparison Maps</a>
+        <a href="todays_predictions.html" class="active">Today's Predictions</a>
+    </div>
+
     <div class="map-wrapper">
         <div class="map-label">Today's Crime Prediction</div>
         <div id="map" class="map"></div>
@@ -234,7 +227,7 @@
         }
 
         // Load and display data
-        fetch('./output/crime_predictions1.json')
+        fetch('./output/crime_predictions.json')
             .then(response => response.json())
             .then(data => {
                 // Create grid
