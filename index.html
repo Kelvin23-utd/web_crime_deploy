@@ -16,14 +16,17 @@
         .maps-container {
             display: flex;
             gap: 20px;
-            height: 600px;
+            flex-wrap: wrap;
         }
         .map-wrapper {
-            flex: 1;
+            flex: 1 1 45%;
+            min-width: 300px;
             border: 1px solid #ccc;
             border-radius: 4px;
             overflow: hidden;
             position: relative;
+            height: 400px;
+            margin-bottom: 20px;
         }
         .map {
             height: 100%;
@@ -60,6 +63,10 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             font-weight: bold;
         }
+        #map3-wrapper {
+            flex: 1 1 100%;
+            height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -72,12 +79,16 @@
             <div class="map-label">Predicted Crime Data</div>
             <div id="map2" class="map"></div>
         </div>
+        <div class="map-wrapper" id="map3-wrapper">
+            <div class="map-label">Total Crime Data</div>
+            <div id="map3" class="map"></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
     
     <script>
-        // Dallas polygon coordinates
+        // Dallas polygon coordinates (keeping existing code)
         const DALLAS_POLYGON = [
             [32.869839, -96.936899],
             [32.977145, -96.837507],
@@ -93,39 +104,35 @@
 
         const CELL_SIZE_DEG = 0.014492;
 
-        // Initialize maps
+        // Initialize all three maps
         const map1 = L.map('map1').setView([32.7767, -96.7970], 11);
         const map2 = L.map('map2').setView([32.7767, -96.7970], 11);
+        const map3 = L.map('map3').setView([32.7767, -96.7970], 11);
 
-        // Synchronize maps
-        function syncMaps(sourceMap, targetMap) {
+        // Synchronize all three maps
+        function syncMaps(sourceMap, targetMaps) {
             sourceMap.on('move', function() {
-                targetMap.setView(sourceMap.getCenter(), sourceMap.getZoom(), {
-                    animate: false
-                });
-            });
-            
-            sourceMap.on('zoom', function() {
-                targetMap.setZoom(sourceMap.getZoom(), {
-                    animate: false
+                targetMaps.forEach(targetMap => {
+                    targetMap.setView(sourceMap.getCenter(), sourceMap.getZoom(), {
+                        animate: false
+                    });
                 });
             });
         }
 
-        // Sync both maps in both directions
-        syncMaps(map1, map2);
-        syncMaps(map2, map1);
+        // Sync all maps
+        syncMaps(map1, [map2, map3]);
+        syncMaps(map2, [map1, map3]);
+        syncMaps(map3, [map1, map2]);
 
-        // Add tile layers
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map1);
+        // Add tile layers to all maps
+        [map1, map2, map3].forEach(map => {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map2);
-
-        // Calculate bounds from polygon
+        // Calculate bounds from polygon (keeping existing code)
         const bounds = DALLAS_POLYGON.reduce((acc, point) => ({
             north: Math.max(acc.north, point[0]),
             south: Math.min(acc.south, point[0]),
@@ -133,6 +140,7 @@
             west: Math.min(acc.west, point[1])
         }), {north: -90, south: 90, east: -180, west: 180});
 
+        // Keep existing createGrid, getHeatmapColor, addGridToMap functions
         function createGrid(data) {
             const grid = {};
             
@@ -147,18 +155,14 @@
                 }
             }
 
-            // Both formats now have a predictions array
             const predictions = data.predictions || [];
             predictions.forEach(pred => {
-                // Handle both array format and object format predictions
                 let lat, lon, crimeCount;
                 
                 if (Array.isArray(pred)) {
-                    // If prediction is an array [lat, lon]
                     [lat, lon] = pred;
                     crimeCount = 1;
                 } else {
-                    // If prediction is an object {latitude, longitude, predicted_crimes}
                     lat = pred.latitude;
                     lon = pred.longitude;
                     crimeCount = pred.predicted_crimes || 1;
@@ -185,7 +189,7 @@
             return '#ffff00';
         }
 
-        function addGridToMap(grid, map) {
+        function addGridToMap(grid, map, mapType) {
             const gridLayer = L.featureGroup();
             
             Object.values(grid).forEach(cell => {
@@ -202,30 +206,9 @@
                     className: 'grid-cell'
                 });
 
-                rectangle.bindPopup(`${map === map1 ? 'Actual' : 'Predicted'} Crimes: ${cell.count}`);
-                
-                // Sync popup states between maps
-                rectangle.on('popupopen', () => {
-                    const key = `${cell.lat},${cell.lon}`;
-                    if (map === map1 && map2._gridCells[key]) {
-                        map2._gridCells[key].openPopup();
-                    } else if (map === map2 && map1._gridCells[key]) {
-                        map1._gridCells[key].openPopup();
-                    }
-                });
-
-                rectangle.on('popupclose', () => {
-                    const key = `${cell.lat},${cell.lon}`;
-                    if (map === map1 && map2._gridCells[key]) {
-                        map2._gridCells[key].closePopup();
-                    } else if (map === map2 && map1._gridCells[key]) {
-                        map1._gridCells[key].closePopup();
-                    }
-                });
-
+                rectangle.bindPopup(`${mapType} Crimes: ${cell.count}`);
                 gridLayer.addLayer(rectangle);
                 
-                // Store reference to rectangle
                 if (!map._gridCells) map._gridCells = {};
                 map._gridCells[`${cell.lat},${cell.lon}`] = rectangle;
             });
@@ -267,33 +250,29 @@
             const realData = await realResponse.json();
             const predictedData = await predictedResponse.json();
             
-            // Debug logging
-            console.log("Real data format:", realData);
-            console.log("Predicted data format:", predictedData);
-            
-            // Create grids for both datasets
+            // Create grids
             const realGrid = createGrid(realData);
             const predictedGrid = createGrid(predictedData);
             
-            // Add grids
-            const gridLayer1 = addGridToMap(realGrid, map1);
-            const gridLayer2 = addGridToMap(predictedGrid, map2);
+            // Add grids to maps
+            const gridLayer1 = addGridToMap(realGrid, map1, 'Actual');
+            const gridLayer2 = addGridToMap(predictedGrid, map2, 'Predicted');
+            const gridLayer3 = addGridToMap(predictedGrid, map3, 'Total');
 
-            // Add Dallas boundaries
-            const boundary1 = addDallasBoundary(map1);
-            const boundary2 = addDallasBoundary(map2);
+            // Add Dallas boundaries to all maps
+            [map1, map2, map3].forEach(map => {
+                const boundary = addDallasBoundary(map);
+                boundary.bringToFront();
+            });
 
             // Add legends
             addLegend(map1, 'Actual Crime Density');
             addLegend(map2, 'Predicted Crime Density');
+            addLegend(map3, 'Total Crime Density');
 
             // Fit to Dallas boundary
             const polyBounds = L.latLngBounds(DALLAS_POLYGON);
             map1.fitBounds(polyBounds);
-
-            // Ensure boundaries stay on top
-            boundary1.bringToFront();
-            boundary2.bringToFront();
         })
         .catch(error => {
             console.error('Error loading data:', error);
